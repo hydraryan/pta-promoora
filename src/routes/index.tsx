@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -377,7 +377,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   return (
-    <section className="relative flex h-[calc(100svh-3.5rem)] w-full flex-col overflow-hidden bg-secondary pb-3 pt-3 sm:h-svh sm:pb-5 sm:pt-5 lg:pb-7 lg:pt-7">
+    <section className="relative flex min-h-0 w-full flex-col overflow-hidden bg-secondary pb-20 pt-4 sm:h-svh sm:pb-5 sm:pt-5 lg:pb-7 lg:pt-7" style={{ height: 'auto' }}>
       {/* Perspective dotted floor */}
       <div
         aria-hidden
@@ -412,7 +412,7 @@ function Hero() {
         </div>
 
         {/* Headline block — compressed for short viewports so meta remains visible */}
-        <div className="flex min-h-0 flex-col justify-center py-2 sm:py-4 lg:py-6">
+        <div className="flex min-h-0 flex-col justify-center py-4 sm:py-4 lg:py-6">
           <h1
             className="max-w-[15ch] font-bold leading-[0.98] tracking-[-0.02em] text-ink [word-break:break-word] sm:leading-[1.01]"
             style={{
@@ -433,16 +433,7 @@ function Hero() {
           </div>
         </div>
 
-        {/* Secondary meta strip — pinned to the bottom of the viewport frame */}
-        <div className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-4 border-t border-ink/10 pb-4 pt-3 text-ink/70 sm:grid-cols-5 sm:gap-4 sm:pb-0 sm:pt-4 lg:gap-8 lg:pt-5">
-          <Meta label="Cohort" value="Aug – Oct '26" />
-          <Meta label="Duration" value="12 weeks" />
-          <Meta label="Format" value="Remote / Hybrid" />
-          <Meta label="Tracks" value="13 roles" />
-          <div className="col-span-2 sm:col-span-1">
-            <Meta label="Outcome" value="PPO eligible" />
-          </div>
-        </div>
+
       </div>
     </section>
 
@@ -462,71 +453,71 @@ function Meta({ label, value }: { label: string; value: string }) {
 
 
 function Program() {
-  const highlights = [
-    { label: "Duration", value: "3 months" },
-    { label: "Format", value: "Remote · Live projects" },
-    { label: "Mentorship", value: "1:1 with senior team" },
-    { label: "Outcome", value: "Certificate + PPO" },
+  const stats = [
+    { value: "13+", label: "Open Roles" },
+    { value: "3", label: "Months Duration" },
+    { value: "1:1", label: "Mentorship" },
+    { value: "100%", label: "Remote Friendly" },
+    { value: "PPO", label: "Eligible Outcome" },
+    { value: "2026", label: "Cohort Year" },
   ];
-  const details = [
-    { title: "Real work", desc: "Ship production features customers actually use." },
-    { title: "Real teams", desc: "Collaborate across engineering, design and growth." },
-    { title: "Real growth", desc: "Weekly sessions, feedback loops and 1:1 mentorship." },
-    { title: "Real opportunity", desc: "Top performers earn pre-placement offers at Promoora." },
-  ];
+
   return (
-    <section id="program" className="border-b border-border bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-28">
+    <section id="program" className="border-b border-border">
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        {/* Left panel — blue */}
+        <div className="flex flex-col justify-center bg-[#1a56db] px-5 py-7 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
+          <h2
+            className="font-bold leading-[1.08] tracking-tight text-white"
+            style={{
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              fontSize: "clamp(1.35rem, 3vw, 2.25rem)",
+            }}
+          >
+            What is Promoora
+            <br />
+            Talent Accelerator?
+          </h2>
 
-        <div className="flex flex-col items-start gap-10 lg:flex-row lg:gap-20">
-          {/* Sticky sidebar */}
-          <div className="w-full space-y-4 lg:sticky lg:top-24 lg:w-2/5">
-            <span className="text-xs font-medium uppercase tracking-[0.2em] text-indigo-600">
-              What is PTA
-            </span>
-            <h2 className="font-display text-4xl font-light leading-[1.08] text-slate-900 lg:text-5xl">
-              Promoora Talent
-              <br />
-              <i className="text-indigo-900">Accelerator.</i>
-            </h2>
-            <div className="h-1 w-12 bg-linear-to-r from-indigo-600 to-cyan-400" />
-            <p className="max-w-sm pt-3 font-light leading-relaxed text-slate-500">
-              A focused, three-month internship where you learn by building — alongside mentors who
-              treat your growth as the deliverable.
-            </p>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-blue-100/90 sm:text-base">
+            PTA is Promoora's flagship 3-month internship program focused on
+            giving emerging talent real-world experience. Contributors work with
+            the Promoora team on live projects under the guidance of senior
+            mentors — shipping production features, building portfolios, and
+            earning PPO opportunities.
+          </p>
 
-            {/* Compact metadata */}
-            <div className="grid grid-cols-2 gap-3 pt-4">
-              {highlights.map((h) => (
-                <div
-                  key={h.label}
-                  className="rounded-lg border border-slate-100 bg-slate-50/50 px-4 py-3"
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    {h.label}
-                  </div>
-                  <div className="mt-0.5 text-sm font-medium text-slate-700">{h.value}</div>
-                </div>
-              ))}
-            </div>
+          <div className="mt-6">
+            <Link
+              to="/apply"
+              className="inline-flex items-center gap-2 rounded-md border-2 border-white px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#1a56db]"
+            >
+              Apply now
+            </Link>
           </div>
+        </div>
 
-          {/* Compact detail grid */}
-          <div className="w-full lg:w-3/5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {details.map((d) => (
-                <div
-                  key={d.title}
-                  className="group rounded-xl border border-slate-100 bg-slate-50/40 p-5 transition-colors hover:border-indigo-100 hover:bg-indigo-50/30"
-                >
-                  <h3 className="font-display text-lg font-medium text-slate-800">{d.title}</h3>
-                  <p className="mt-1.5 text-sm font-light leading-relaxed text-slate-500">
-                    {d.desc}
-                  </p>
-                </div>
-              ))}
+        {/* Right panel — dark with stats */}
+        <div className="grid grid-cols-2 bg-[#1e293b]">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="flex flex-col justify-center border-b border-r border-white/10 px-6 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-9"
+            >
+              <span
+                className="font-bold leading-none text-white"
+                style={{
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
+                }}
+              >
+                {s.value}
+              </span>
+              <span className="mt-1.5 text-xs font-medium text-slate-400 sm:text-sm">
+                {s.label}
+              </span>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
@@ -549,17 +540,23 @@ function Positions() {
     <section id="positions" className="border-b border-border bg-[#fdfcfb]">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-10 lg:py-32">
 
-        <div className="mx-auto max-w-2xl text-center">
-          <Eyebrow>Open Positions</Eyebrow>
-          <h2 className="mt-6 font-display text-ink">
+        <div className="max-w-3xl">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">
+            Open Positions
+          </span>
+          <h2
+            className="mt-4 font-bold leading-[1.08] tracking-tight text-slate-900"
+            style={{
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              fontSize: "clamp(1.5rem, 3.5vw, 2.75rem)",
+            }}
+          >
             Thirteen tracks.{" "}
-            <span className="bg-linear-to-r from-indigo-600 via-violet-600 to-cyan-500 bg-clip-text italic text-transparent">
-              One rigorous standard.
-            </span>
+            <span className="text-indigo-600">One rigorous standard.</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-md text-muted-foreground">
-            Across engineering, design, business and marketing — pick the discipline where you
-            want to compound your craft.
+          <p className="mt-4 max-w-lg text-base leading-relaxed text-slate-500">
+            Across engineering, design, business and marketing — pick the
+            discipline where you want to compound your craft.
           </p>
         </div>
 
@@ -757,43 +754,155 @@ function RoleSection({ title, items, accent }: { title: string; items: string[];
 
 function Eligibility() {
   const items = [
-    "Undergraduate & Postgraduate students",
-    "Recent graduates seeking their first industry role",
-    "Passionate, self-directed learners",
-    "Strong written and verbal communication",
-    "A willingness to be coached and to ship",
+    { num: "01", text: "Undergraduate & Postgraduate students" },
+    { num: "02", text: "Recent graduates seeking their first industry role" },
+    { num: "03", text: "Passionate, self-directed learners" },
+    { num: "04", text: "Strong written and verbal communication" },
+    { num: "05", text: "A willingness to be coached and to ship" },
   ];
-  return (
-    <section id="eligibility" className="border-b border-border">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-10 lg:py-32">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
 
-          <div className="lg:col-span-5">
-            <Eyebrow>Eligibility</Eyebrow>
-            <h2 className="mt-6 font-display text-ink">
+  const sectionRef = useRef<HTMLElement>(null);
+  const [progress, setProgress] = useState(0);
+
+  const onScroll = useCallback(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight;
+    // start progress when top of section hits 80% of viewport,
+    // complete when bottom of section hits 30% of viewport
+    const start = vh * 0.8;
+    const end = vh * 0.3;
+    const total = rect.height + (start - end);
+    const scrolled = start - rect.top;
+    const p = Math.max(0, Math.min(1, scrolled / total));
+    setProgress(p);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
+
+  // Each item occupies an equal slice of progress
+  const stepSize = 1 / items.length;
+
+  return (
+    <section id="eligibility" className="bg-[#0f172a]" ref={sectionRef}>
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
+        {/* Header */}
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-400">
+              Eligibility
+            </span>
+            <h2
+              className="mt-4 font-bold leading-[1.08] tracking-tight text-white"
+              style={{
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)",
+              }}
+            >
               Who this is for.
             </h2>
-            <p className="mt-6 text-lg text-muted-foreground">
-              PTA is open to curious minds who want to build a career at the intersection of
-              craft and impact. If any of these describe you, we'd love to hear from you.
+            <p className="mt-4 text-base leading-relaxed text-slate-400">
+              PTA is open to curious minds who want to build a career at the
+              intersection of craft and impact.
             </p>
-            <Link
-              to="/apply"
-              className="mt-10 inline-flex items-center gap-2 rounded-full bg-gradient-brand px-6 py-3.5 text-sm font-medium text-white shadow-lift transition-transform hover:scale-[1.02]"
-            >
-              Start your application <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
-          <div className="lg:col-span-7">
-            <ol className="divide-y divide-border border-y border-border">
-              {items.map((item, i) => (
-                <li key={item} className="flex items-center gap-4 py-5 sm:gap-8 sm:py-6">
-                  <span className="font-mono text-sm text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="text-base text-ink sm:text-lg">{item}</span>
-                </li>
 
-              ))}
-            </ol>
+          <Link
+            to="/apply"
+            className="inline-flex w-fit items-center gap-2 rounded-md border-2 border-indigo-500 px-5 py-2.5 text-sm font-semibold text-indigo-400 transition-colors hover:bg-indigo-500 hover:text-white"
+          >
+            Start your application
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {/* Criteria — horizontal timeline with scroll-driven glow */}
+        <div className="mt-14">
+          <div className="grid grid-cols-1 gap-0 sm:grid-cols-5">
+            {items.map((item, i) => {
+              const dotActive = progress >= stepSize * i + stepSize * 0.3;
+              // Line fill: how much of THIS segment's connector is filled
+              const segProgress =
+                i < items.length - 1
+                  ? Math.max(0, Math.min(1, (progress - stepSize * (i + 0.5)) / (stepSize * 0.5)))
+                  : 0;
+
+              return (
+                <div key={item.num} className="group relative flex flex-col">
+                  {/* Dot + connector */}
+                  <div className="flex items-center gap-0">
+                    {/* Dot */}
+                    <div
+                      className="h-3 w-3 shrink-0 rounded-full border-2 transition-all duration-500"
+                      style={{
+                        borderColor: dotActive ? "#6366f1" : "#475569",
+                        backgroundColor: dotActive ? "#6366f1" : "transparent",
+                        boxShadow: dotActive
+                          ? "0 0 12px rgba(99,102,241,0.6), 0 0 24px rgba(99,102,241,0.3)"
+                          : "none",
+                      }}
+                    />
+                    {/* Horizontal connector (desktop) */}
+                    {i < items.length - 1 && (
+                      <div className="relative hidden h-px w-full sm:block">
+                        <div className="absolute inset-0 bg-slate-700" />
+                        <div
+                          className="absolute inset-y-0 left-0 bg-indigo-500 transition-none"
+                          style={{
+                            width: `${segProgress * 100}%`,
+                            boxShadow:
+                              segProgress > 0
+                                ? "0 0 8px rgba(99,102,241,0.5), 0 0 2px rgba(99,102,241,0.8)"
+                                : "none",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="pb-8 pl-5 pt-4 sm:pb-0 sm:pl-0 sm:pr-6 sm:pt-5">
+                    <span
+                      className="font-mono text-xs transition-colors duration-500"
+                      style={{
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                        color: dotActive ? "#818cf8" : "#475569",
+                      }}
+                    >
+                      {item.num}
+                    </span>
+                    <p
+                      className="mt-1 text-sm leading-relaxed transition-colors duration-500 sm:text-[15px]"
+                      style={{ color: dotActive ? "#e2e8f0" : "#94a3b8" }}
+                    >
+                      {item.text}
+                    </p>
+                  </div>
+
+                  {/* Mobile vertical connector */}
+                  {i < items.length - 1 && (
+                    <div className="absolute bottom-0 left-[5px] top-[12px] w-px sm:hidden">
+                      <div className="h-full w-full bg-slate-700" />
+                      <div
+                        className="absolute left-0 top-0 w-full bg-indigo-500 transition-none"
+                        style={{
+                          height: `${segProgress * 100}%`,
+                          boxShadow:
+                            segProgress > 0
+                              ? "0 0 6px rgba(99,102,241,0.5)"
+                              : "none",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
