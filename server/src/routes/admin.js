@@ -63,9 +63,6 @@ router.get("/applications/:id/resume", async (req, res) => {
   const app = await Application.findById(req.params.id).lean();
   if (!app?.resume_path) return res.status(404).json({ error: "Resume not found" });
   let downloadUrl = app.resume_path;
-  if (downloadUrl.includes("res.cloudinary.com") && downloadUrl.includes("/upload/")) {
-    downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
-  }
 
   return res.json({ url: downloadUrl });
 });
