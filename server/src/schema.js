@@ -26,6 +26,7 @@ export const applicationSchema = z.object({
   college: z.string().trim().min(2).max(200),
   year: z.string().optional().default(""),
   applying_position: z.enum(POSITIONS),
+  portfolio_link: z.string().trim().url().max(500).optional().or(z.literal("")).default(""),
   motivation: z.string().trim().min(100).max(1000),
   declaration: z.union([z.literal("true"), z.literal("on"), z.literal(true)]),
 });

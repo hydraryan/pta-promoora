@@ -62,14 +62,24 @@ router.get("/applications/:id", async (req, res) => {
 router.get("/applications/:id/resume", async (req, res) => {
   const app = await Application.findById(req.params.id).lean();
   if (!app?.resume_path) return res.status(404).json({ error: "Resume not found" });
-  const abs = path.resolve(app.resume_path);
-  if (!fs.existsSync(abs)) return res.status(404).json({ error: "Resume file missing" });
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${(app.resume_original_name || "resume.pdf").replace(/"/g, "")}"`,
-  );
-  fs.createReadStream(abs).pipe(res);
+  const { createClient } = await import("@supabase/supabase-js");
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return res.status(500).json({ error: "Missing Supabase configuration" });
+  
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  
+  const { data, error } = await supabase.storage
+    .from("pta-resumes")
+    .createSignedUrl(app.resume_path, 60, {
+      download: app.resume_original_name || "resume.pdf",
+    });
+
+  if (error || !data) {
+    return res.status(500).json({ error: "Could not generate download URL" });
+  }
+
+  return res.json({ url: data.signedUrl });
 });
 
 router.patch("/applications/:id/status", async (req, res) => {

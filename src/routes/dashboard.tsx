@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Download, KeyRound, MapPin, Phone, Mail, GraduationCap, Briefcase, Calendar, CheckCircle2, Circle } from "lucide-react";
+import { Loader2, Download, KeyRound, MapPin, Phone, Mail, GraduationCap, Briefcase, Calendar, CheckCircle2, Circle, ExternalLink, LinkIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, ApiError, fetchBlobAuthed } from "@/lib/api";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ type Application = {
   college: string;
   year?: string;
   applying_position: string;
+  portfolio_link?: string;
   motivation: string;
   application_status: string;
   status_history: StatusHistory[];
@@ -107,15 +108,14 @@ function DashboardPage() {
 
   async function downloadResume() {
     try {
-      const blob = await fetchBlobAuthed("/api/me/resume");
-      const url = URL.createObjectURL(blob);
+      const { url } = await apiFetch<{ url: string }>("/api/me/resume");
       const a = document.createElement("a");
       a.href = url;
+      a.target = "_blank";
       a.download = app?.resume_original_name || "resume.pdf";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not download resume");
     }
@@ -220,6 +220,23 @@ function DashboardPage() {
               <Row icon={GraduationCap} label="College" value={app.college} />
               {app.year && <Row icon={Calendar} label="Year" value={app.year} />}
               <Row icon={Briefcase} label="Applying for" value={app.applying_position} />
+              {app.portfolio_link && (
+                <div className="flex items-start gap-3">
+                  <LinkIcon className="mt-0.5 h-4 w-4 flex-none text-neutral-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs uppercase tracking-wider text-neutral-500">Portfolio</div>
+                    <a
+                      href={app.portfolio_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 truncate text-sm text-indigo-600 hover:underline"
+                    >
+                      {app.portfolio_link.replace(/^https?:\/\//, "")}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+              )}
             </DetailCard>
           </section>
         </div>

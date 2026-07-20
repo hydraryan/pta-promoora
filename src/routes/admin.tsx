@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Download, Send, X } from "lucide-react";
+import { Loader2, Search, Download, Send, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, ApiError, fetchBlobAuthed } from "@/lib/api";
@@ -19,6 +19,7 @@ type Application = {
   college: string;
   year?: string;
   applying_position: string;
+  portfolio_link?: string;
   motivation: string;
   application_status: string;
   status_history: { status: string; note?: string; changed_at: string }[];
@@ -239,10 +240,10 @@ function DetailDrawer({
 
   async function downloadResume() {
     try {
-      const blob = await fetchBlobAuthed(`/api/admin/applications/${application.id}/resume`);
-      const url = URL.createObjectURL(blob);
+      const { url } = await apiFetch<{ url: string }>(`/api/admin/applications/${application.id}/resume`);
       const a = document.createElement("a");
       a.href = url;
+      a.target = "_blank";
       a.download = application.resume_original_name || `${application.full_name}-resume.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -300,6 +301,17 @@ function DetailDrawer({
             {application.year && <Info label="Year" value={application.year} />}
             <Info label="Applied" value={new Date(application.createdAt).toLocaleString()} />
           </section>
+
+          {application.portfolio_link && (
+            <a
+              href={application.portfolio_link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 ring-1 ring-indigo-200/60 transition hover:bg-indigo-100"
+            >
+              <ExternalLink className="h-4 w-4" /> Portfolio
+            </a>
+          )}
 
           {application.has_resume && (
             <button

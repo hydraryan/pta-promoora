@@ -30,6 +30,7 @@ const ApplicationSchema = new mongoose.Schema(
     college: { type: String, required: true, trim: true },
     year: { type: String, default: "" },
     applying_position: { type: String, required: true, index: true },
+    portfolio_link: { type: String, default: "" },
     motivation: { type: String, required: true },
     resume_path: { type: String, required: true },
     resume_original_name: { type: String, default: "" },

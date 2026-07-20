@@ -1,9 +1,6 @@
 import { Router } from "express";
-import multer from "multer";
-import path from "node:path";
-import fs from "node:fs";
-import crypto from "node:crypto";
 import rateLimit from "express-rate-limit";
+import { createClient } from "@supabase/supabase-js";
 
 import { applicationSchema } from "../schema.js";
 import { User } from "../models/User.js";
@@ -11,60 +8,88 @@ import { Application } from "../models/Application.js";
 import { generatePassword, hashPassword } from "../password.js";
 import { sendApplicationReceived, sendAccountCreated } from "../mailer.js";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
-const MAX_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024);
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-    cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${safe}`);
-  },
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_BYTES },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype !== "application/pdf" && !file.originalname.toLowerCase().endsWith(".pdf")) {
-      return cb(new Error("Only PDF files are allowed"));
-    }
-    cb(null, true);
-  },
-});
-
+const router = Router();
 const applyLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5 });
 
-const router = Router();
+const RESUME_BUCKET = "pta-resumes";
+const MAX_BYTES = 5 * 1024 * 1024;
 
-router.post("/apply", applyLimiter, upload.single("resume"), async (req, res) => {
-  const cleanupFile = () => {
-    if (req.file?.path) fs.unlink(req.file.path, () => {});
-  };
+// Helper to get supabase admin client
+function getSupabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase configuration");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
+// 1. Generate Signed Upload URL
+router.post("/apply/upload-url", async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "Resume PDF is required" });
-
-    // Verify PDF magic bytes
-    const fd = fs.openSync(req.file.path, "r");
-    const head = Buffer.alloc(5);
-    fs.readSync(fd, head, 0, 5, 0);
-    fs.closeSync(fd);
-    if (!head.toString("utf8").startsWith("%PDF-")) {
-      cleanupFile();
-      return res.status(400).json({ error: "Resume must be a valid PDF" });
+    const { fileName, size } = req.body || {};
+    if (!fileName || !/\.pdf$/i.test(fileName)) {
+      return res.status(400).json({ error: "Only PDF files are allowed" });
+    }
+    if (!size || size > MAX_BYTES) {
+      return res.status(400).json({ error: "Resume must be 5 MB or less" });
     }
 
+    const supabase = getSupabase();
+    const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+    const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safe}`;
+
+    const { data: signed, error } = await supabase.storage
+      .from(RESUME_BUCKET)
+      .createSignedUploadUrl(path);
+
+    if (error || !signed) {
+      throw new Error(error?.message ?? "Could not create upload URL");
+    }
+
+    return res.json({ path: signed.path, token: signed.token, url: signed.signedUrl });
+  } catch (err) {
+    console.error("[upload-url]", err);
+    return res.status(500).json({ error: err.message || "Server error" });
+  }
+});
+
+// 2. Submit Application JSON
+router.post("/apply", applyLimiter, async (req, res) => {
+  try {
     const parsed = applicationSchema.safeParse(req.body);
     if (!parsed.success) {
-      cleanupFile();
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
     const data = parsed.data;
 
+    const resume_path = req.body.resume_path;
+    const resume_original_name = req.body.resume_original_name || "resume.pdf";
+    if (!resume_path) {
+      return res.status(400).json({ error: "Resume path is required" });
+    }
+
+    // Verify PDF in Supabase
+    const supabase = getSupabase();
+    const { data: fileBlob, error: dlError } = await supabase.storage
+      .from(RESUME_BUCKET)
+      .download(resume_path);
+    
+    if (dlError || !fileBlob) {
+      return res.status(400).json({ error: "Resume upload could not be verified." });
+    }
+    if (fileBlob.size > MAX_BYTES) {
+      await supabase.storage.from(RESUME_BUCKET).remove([resume_path]);
+      return res.status(413).json({ error: "Resume exceeds 5 MB limit." });
+    }
+
+    const head = new Uint8Array(await fileBlob.slice(0, 5).arrayBuffer());
+    const magic = String.fromCharCode(...head);
+    if (!magic.startsWith("%PDF-")) {
+      await supabase.storage.from(RESUME_BUCKET).remove([resume_path]);
+      return res.status(400).json({ error: "Resume must be a valid PDF file." });
+    }
+
     const existingApp = await Application.findOne({ email: data.email }).lean();
     if (existingApp) {
-      cleanupFile();
       return res.status(409).json({ error: "An application with this email already exists." });
     }
 
@@ -94,9 +119,10 @@ router.post("/apply", applyLimiter, upload.single("resume"), async (req, res) =>
       college: data.college,
       year: data.year || "",
       applying_position: data.applying_position,
+      portfolio_link: data.portfolio_link || "",
       motivation: data.motivation,
-      resume_path: req.file.path,
-      resume_original_name: req.file.originalname,
+      resume_path: resume_path,
+      resume_original_name: resume_original_name,
       account_created: accountCreated,
       application_status: "Applied",
       status_history: [{ status: "Applied", note: "Application submitted", changed_at: new Date() }],
@@ -122,11 +148,7 @@ router.post("/apply", applyLimiter, upload.single("resume"), async (req, res) =>
 
     return res.json({ id: String(app._id), account_created: accountCreated, email_sent: emailSent });
   } catch (err) {
-    cleanupFile();
     console.error("[apply] error", err);
-    if (err?.message?.includes("File too large")) {
-      return res.status(413).json({ error: "Resume must be 5 MB or less" });
-    }
     return res.status(500).json({ error: err?.message || "Server error" });
   }
 });

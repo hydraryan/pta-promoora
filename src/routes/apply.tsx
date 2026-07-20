@@ -18,6 +18,7 @@ import {
   RotateCw,
   CloudOff,
   CheckCircle2,
+  LinkIcon,
 } from "lucide-react";
 
 import {
@@ -65,6 +66,7 @@ type FormState = {
   college: string;
   year: string;
   applying_position: string;
+  portfolio_link: string;
   motivation: string;
   declaration: boolean;
 };
@@ -78,6 +80,7 @@ const initialState: FormState = {
   college: "",
   year: "",
   applying_position: "",
+  portfolio_link: "",
   motivation: "",
   declaration: false,
 };
@@ -225,6 +228,9 @@ function ApplyPage() {
       if (!state.qualification) errs.qualification = "Select a qualification";
       if (!state.college || state.college.trim().length < 2) errs.college = "Enter your college";
       if (!state.applying_position) errs.applying_position = "Select a role";
+      if (state.portfolio_link.trim() && !/^https?:\/\/.+\..+/.test(state.portfolio_link.trim())) {
+        errs.portfolio_link = "Enter a valid URL starting with https://";
+      }
     }
     if (current === 3) {
       if (state.motivation.trim().length < 100) errs.motivation = "Please write at least 100 characters";
@@ -273,22 +279,46 @@ function ApplyPage() {
         return;
       }
 
-      const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:4000";
-      const body = new FormData();
-      for (const [k, v] of Object.entries(parsed.data)) {
-        body.append(k, typeof v === "boolean" ? String(v) : (v as string));
-      }
-      if (file) body.append("resume", file);
+      const apiUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:4000";
+      const baseUrl = apiUrl.replace(/\/$/, "");
 
-      // XHR gives us upload progress; fetch does not.
-      setUploadProgress(0);
-      type XhrResult = { status: number; ok: boolean; body: string };
-      let res: XhrResult;
+      // 1. Get signed upload URL
+      let signedUrlData: { url: string; path: string; token?: string };
       try {
-        res = await new Promise<XhrResult>((resolve, reject) => {
+        const urlRes = await fetch(`${baseUrl}/api/apply/upload-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: file?.name || "resume.pdf", size: file?.size || 0 }),
+        });
+        if (!urlRes.ok) {
+          const json = await urlRes.json().catch(() => ({}));
+          throw new Error(json.error || "Could not get upload URL");
+        }
+        signedUrlData = await urlRes.json();
+      } catch (err) {
+        setSubmitError({
+          kind: "network",
+          message: err instanceof Error ? err.message : "Failed to initialize upload.",
+        });
+        toast.error("Upload failed");
+        return;
+      }
+
+      // 2. Upload file directly to Supabase via XHR (for progress)
+      setUploadProgress(0);
+      type XhrResult = { status: number; ok: boolean };
+      let uploadRes: XhrResult;
+      try {
+        uploadRes = await new Promise<XhrResult>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open("POST", `${apiUrl}/api/apply`);
+          xhr.open("PUT", signedUrlData.url);
           xhr.timeout = 60_000;
+          xhr.setRequestHeader("Content-Type", file?.type || "application/pdf");
+          // Supabase token for upload if needed, usually baked into the signed URL though
+          if (signedUrlData.token) {
+            xhr.setRequestHeader("Authorization", `Bearer ${signedUrlData.token}`);
+          }
+          
           xhr.upload.onprogress = (ev) => {
             if (ev.lengthComputable) {
               setUploadProgress(Math.min(99, Math.round((ev.loaded / ev.total) * 100)));
@@ -299,12 +329,11 @@ function ApplyPage() {
             resolve({
               status: xhr.status,
               ok: xhr.status >= 200 && xhr.status < 300,
-              body: xhr.responseText,
             });
           xhr.onerror = () => reject(new Error("network"));
           xhr.ontimeout = () => reject(new Error("timeout"));
           xhr.onabort = () => reject(new Error("aborted"));
-          xhr.send(body);
+          xhr.send(file);
         });
       } catch (err) {
         const kind = err instanceof Error ? err.message : "network";
@@ -320,49 +349,72 @@ function ApplyPage() {
         return;
       }
 
-      const json =
-        (() => {
-          try {
-            return JSON.parse(res.body) as Record<string, unknown>;
-          } catch {
-            return {} as Record<string, unknown>;
-          }
-        })();
+      if (!uploadRes.ok) {
+        setSubmitError({
+          kind: "server",
+          status: uploadRes.status,
+          message: "Failed to upload resume to storage.",
+        });
+        toast.error("Upload failed");
+        return;
+      }
 
+      // 3. Submit application data to backend
+      let submitRes: Response;
+      let json: Record<string, unknown> = {};
+      try {
+        submitRes = await fetch(`${baseUrl}/api/apply`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...parsed.data,
+            resume_path: signedUrlData.path,
+            resume_original_name: file?.name || "resume.pdf",
+          }),
+        });
+        json = await submitRes.json().catch(() => ({}));
+      } catch (err) {
+        setSubmitError({
+          kind: "network",
+          message: "Failed to submit application data.",
+        });
+        toast.error("Submission failed");
+        return;
+      }
 
-      if (!res.ok) {
-        if (res.status === 409) {
+      if (!submitRes.ok) {
+        if (submitRes.status === 409) {
           setSubmitError({
             kind: "server",
-            status: res.status,
+            status: submitRes.status,
             message:
               (json as { error?: string }).error ??
               "An application with this email already exists.",
           });
-        } else if (res.status === 413) {
+        } else if (submitRes.status === 413) {
           setSubmitError({
             kind: "server",
-            status: res.status,
+            status: submitRes.status,
             message: "Your resume is too large. Please upload a PDF under 5 MB.",
           });
-        } else if (res.status === 400) {
+        } else if (submitRes.status === 400) {
           setSubmitError({
             kind: "validation",
-            status: res.status,
+            status: submitRes.status,
             message:
               (json as { error?: string }).error ??
               "Some fields didn't pass validation. Please review your entries.",
           });
-        } else if (res.status >= 500) {
+        } else if (submitRes.status >= 500) {
           setSubmitError({
             kind: "server",
-            status: res.status,
+            status: submitRes.status,
             message: "Our server had a hiccup. Please try again in a moment.",
           });
         } else {
           setSubmitError({
             kind: "unknown",
-            status: res.status,
+            status: submitRes.status,
             message: (json as { error?: string }).error ?? "Something went wrong. Please try again.",
           });
         }
@@ -624,6 +676,25 @@ function ApplyPage() {
                       />
                     </Field>
                   </div>
+                  <div className="mt-5">
+                    <Field
+                      label="Portfolio / project link"
+                      error={errors.portfolio_link}
+                      hint="GitHub, Behance, Dribbble, personal site — anything that shows your work"
+                    >
+                      <div className="relative">
+                        <LinkIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+                        <input
+                          value={state.portfolio_link}
+                          onChange={(e) => set("portfolio_link", e.target.value)}
+                          placeholder="https://github.com/yourname"
+                          type="url"
+                          autoComplete="url"
+                          className="w-full rounded-xl border border-border/70 bg-white py-3 pl-10 pr-4 text-sm text-ink outline-none transition-all placeholder:text-muted-foreground/70 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10"
+                        />
+                      </div>
+                    </Field>
+                  </div>
                 </StepShell>
               )}
 
@@ -748,6 +819,7 @@ function ApplyPage() {
                       <ReviewRow label="College" value={state.college} />
                       <ReviewRow label="Role" value={state.applying_position} />
                       <ReviewRow label="Year" value={state.year || "—"} />
+                      {state.portfolio_link && <ReviewRow label="Portfolio" value={state.portfolio_link} />}
                     </dl>
                   </div>
 

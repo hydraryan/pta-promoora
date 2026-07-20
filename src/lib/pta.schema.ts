@@ -56,6 +56,13 @@ export const applicationSchema = z.object({
   college: z.string().trim().min(2, "College/University is required").max(200),
   year: z.enum(YEAR_OPTIONS).optional().or(z.literal("")),
   applying_position: z.enum(POSITION_VALUES),
+  portfolio_link: z
+    .string()
+    .trim()
+    .url("Enter a valid URL (e.g. https://…)")
+    .max(500)
+    .optional()
+    .or(z.literal("")),
   motivation: z
     .string()
     .trim()
