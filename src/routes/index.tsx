@@ -377,7 +377,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   return (
-    <section className="relative flex min-h-0 w-full flex-col overflow-hidden bg-secondary pb-20 pt-4 sm:h-svh sm:pb-5 sm:pt-5 lg:pb-7 lg:pt-7" style={{ height: 'auto' }}>
+    <section className="relative flex min-h-0 w-full flex-col overflow-hidden bg-secondary pb-10 pt-10 sm:h-svh sm:pb-5 sm:pt-5 lg:pb-7 lg:pt-7" style={{ height: 'auto' }}>
       {/* Perspective dotted floor */}
       <div
         aria-hidden
