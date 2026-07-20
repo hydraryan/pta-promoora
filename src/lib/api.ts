@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000").replace(/\/$/, "");
+const BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:4000").replace(/\/$/, "");
 const TOKEN_KEY = "pta:auth:token";
 
 export function getToken(): string | null {
