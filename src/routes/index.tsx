@@ -261,7 +261,7 @@ function SideNav() {
 
   return (
     <>
-      <aside className="fixed inset-x-0 top-0 z-40 flex h-14 w-full flex-row items-center justify-between border-b border-ink/10 bg-white/80 pl-4 pr-[116px] backdrop-blur-md sm:bottom-0 sm:left-0 sm:right-auto sm:top-0 sm:h-full sm:w-14 sm:flex-col sm:border-b-0 sm:border-r sm:px-0 sm:py-5">
+      <aside className="fixed inset-x-0 top-0 z-40 flex h-14 w-full flex-row items-center justify-between border-b border-ink/10 bg-white/80 pl-4 pr-[126px] backdrop-blur-md sm:bottom-0 sm:left-0 sm:right-auto sm:top-0 sm:h-full sm:w-14 sm:flex-col sm:border-b-0 sm:border-r sm:px-0 sm:py-5">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -279,7 +279,7 @@ function SideNav() {
         <Link
           to="/apply"
           aria-label="Apply"
-          className="flex h-8 items-center justify-center rounded-full bg-[#1a73e8] px-3.5 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-105 sm:h-9 sm:w-9 sm:px-0"
+          className="flex h-[36px] items-center justify-center rounded-full bg-[#1a73e8] px-4 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08)] transition-transform hover:scale-105 sm:h-9 sm:w-9 sm:px-0 sm:shadow-sm"
         >
           <span className="sm:hidden">Apply</span>
           <ArrowUpRight className="hidden h-4 w-4 sm:block" />
