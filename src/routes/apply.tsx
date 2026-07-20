@@ -282,8 +282,8 @@ function ApplyPage() {
       const apiUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:4000";
       const baseUrl = apiUrl.replace(/\/$/, "");
 
-      // 1. Get signed upload URL
-      let signedUrlData: { url: string; path: string; token?: string };
+      // 1. Get signed upload signature from backend for Cloudinary
+      let signatureData: { timestamp: number; signature: string; cloudName: string; apiKey: string };
       try {
         const urlRes = await fetch(`${baseUrl}/api/apply/upload-url`, {
           method: "POST",
@@ -292,9 +292,9 @@ function ApplyPage() {
         });
         if (!urlRes.ok) {
           const json = await urlRes.json().catch(() => ({}));
-          throw new Error(json.error || "Could not get upload URL");
+          throw new Error(json.error || "Could not get upload signature");
         }
-        signedUrlData = await urlRes.json();
+        signatureData = await urlRes.json();
       } catch (err) {
         setSubmitError({
           kind: "network",
@@ -304,21 +304,24 @@ function ApplyPage() {
         return;
       }
 
-      // 2. Upload file directly to Supabase via XHR (for progress)
+      // 2. Upload file directly to Cloudinary via XHR (for progress)
       setUploadProgress(0);
-      type XhrResult = { status: number; ok: boolean };
+      type XhrResult = { status: number; ok: boolean; body?: string };
       let uploadRes: XhrResult;
       try {
         uploadRes = await new Promise<XhrResult>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open("PUT", signedUrlData.url);
+          const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/auto/upload`;
+          xhr.open("POST", cloudinaryUrl);
           xhr.timeout = 60_000;
-          xhr.setRequestHeader("Content-Type", file?.type || "application/pdf");
-          // Supabase token for upload if needed, usually baked into the signed URL though
-          if (signedUrlData.token) {
-            xhr.setRequestHeader("Authorization", `Bearer ${signedUrlData.token}`);
-          }
           
+          const formData = new FormData();
+          formData.append("file", file!);
+          formData.append("api_key", signatureData.apiKey);
+          formData.append("timestamp", signatureData.timestamp.toString());
+          formData.append("signature", signatureData.signature);
+          formData.append("folder", "pta_resumes");
+
           xhr.upload.onprogress = (ev) => {
             if (ev.lengthComputable) {
               setUploadProgress(Math.min(99, Math.round((ev.loaded / ev.total) * 100)));
@@ -329,11 +332,12 @@ function ApplyPage() {
             resolve({
               status: xhr.status,
               ok: xhr.status >= 200 && xhr.status < 300,
+              body: xhr.responseText,
             });
           xhr.onerror = () => reject(new Error("network"));
           xhr.ontimeout = () => reject(new Error("timeout"));
           xhr.onabort = () => reject(new Error("aborted"));
-          xhr.send(file);
+          xhr.send(formData);
         });
       } catch (err) {
         const kind = err instanceof Error ? err.message : "network";
@@ -359,6 +363,14 @@ function ApplyPage() {
         return;
       }
 
+      let cloudinarySecureUrl = "";
+      try {
+        const cJson = JSON.parse(uploadRes.body || "{}");
+        cloudinarySecureUrl = cJson.secure_url;
+      } catch (e) {
+        console.error("Failed to parse cloudinary response");
+      }
+
       // 3. Submit application data to backend
       let submitRes: Response;
       let json: Record<string, unknown> = {};
@@ -368,7 +380,7 @@ function ApplyPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...parsed.data,
-            resume_path: signedUrlData.path,
+            resume_path: cloudinarySecureUrl,
             resume_original_name: file?.name || "resume.pdf",
           }),
         });

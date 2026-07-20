@@ -1,6 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { createClient } from "@supabase/supabase-js";
+import { v2 as cloudinary } from "cloudinary";
 
 import { applicationSchema } from "../schema.js";
 import { User } from "../models/User.js";
@@ -11,18 +11,18 @@ import { sendApplicationReceived, sendAccountCreated } from "../mailer.js";
 const router = Router();
 const applyLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5 });
 
-const RESUME_BUCKET = "pta-resumes";
 const MAX_BYTES = 5 * 1024 * 1024;
 
-// Helper to get supabase admin client
-function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Missing Supabase configuration");
-  return createClient(url, key, { auth: { persistSession: false } });
+function configureCloudinary() {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 }
+configureCloudinary();
 
-// 1. Generate Signed Upload URL
+// 1. Generate Signed Upload Signature for Cloudinary
 router.post("/apply/upload-url", async (req, res) => {
   try {
     const { fileName, size } = req.body || {};
@@ -33,19 +33,28 @@ router.post("/apply/upload-url", async (req, res) => {
       return res.status(400).json({ error: "Resume must be 5 MB or less" });
     }
 
-    const supabase = getSupabase();
-    const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-    const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safe}`;
-
-    const { data: signed, error } = await supabase.storage
-      .from(RESUME_BUCKET)
-      .createSignedUploadUrl(path);
-
-    if (error || !signed) {
-      throw new Error(error?.message ?? "Could not create upload URL");
+    if (!process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ error: "Missing Cloudinary configuration" });
     }
 
-    return res.json({ path: signed.path, token: signed.token, url: signed.signedUrl });
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    // Ask Cloudinary to return raw format (pdf) and assign it to a folder
+    const paramsToSign = {
+      timestamp: timestamp,
+      folder: "pta_resumes",
+    };
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_API_SECRET
+    );
+
+    return res.json({ 
+      timestamp, 
+      signature, 
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME, 
+      apiKey: process.env.CLOUDINARY_API_KEY 
+    });
   } catch (err) {
     console.error("[upload-url]", err);
     return res.status(500).json({ error: err.message || "Server error" });
@@ -61,31 +70,10 @@ router.post("/apply", applyLimiter, async (req, res) => {
     }
     const data = parsed.data;
 
-    const resume_path = req.body.resume_path;
+    const resume_path = req.body.resume_path; // Cloudinary secure_url
     const resume_original_name = req.body.resume_original_name || "resume.pdf";
-    if (!resume_path) {
-      return res.status(400).json({ error: "Resume path is required" });
-    }
-
-    // Verify PDF in Supabase
-    const supabase = getSupabase();
-    const { data: fileBlob, error: dlError } = await supabase.storage
-      .from(RESUME_BUCKET)
-      .download(resume_path);
-    
-    if (dlError || !fileBlob) {
-      return res.status(400).json({ error: "Resume upload could not be verified." });
-    }
-    if (fileBlob.size > MAX_BYTES) {
-      await supabase.storage.from(RESUME_BUCKET).remove([resume_path]);
-      return res.status(413).json({ error: "Resume exceeds 5 MB limit." });
-    }
-
-    const head = new Uint8Array(await fileBlob.slice(0, 5).arrayBuffer());
-    const magic = String.fromCharCode(...head);
-    if (!magic.startsWith("%PDF-")) {
-      await supabase.storage.from(RESUME_BUCKET).remove([resume_path]);
-      return res.status(400).json({ error: "Resume must be a valid PDF file." });
+    if (!resume_path || !resume_path.includes("res.cloudinary.com")) {
+      return res.status(400).json({ error: "Valid Resume URL is required" });
     }
 
     const existingApp = await Application.findOne({ email: data.email }).lean();

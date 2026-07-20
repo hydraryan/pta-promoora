@@ -27,24 +27,12 @@ router.get("/resume", requireAuth, async (req, res) => {
     $or: [{ user_id: req.user._id }, { email: req.user.email }],
   }).lean();
   if (!app?.resume_path) return res.status(404).json({ error: "Resume not found" });
-  const { createClient } = await import("@supabase/supabase-js");
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return res.status(500).json({ error: "Missing Supabase configuration" });
-  
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
-  
-  const { data, error } = await supabase.storage
-    .from("pta-resumes")
-    .createSignedUrl(app.resume_path, 60, {
-      download: app.resume_original_name || "resume.pdf",
-    });
-
-  if (error || !data) {
-    return res.status(500).json({ error: "Could not generate download URL" });
+  let downloadUrl = app.resume_path;
+  if (downloadUrl.includes("res.cloudinary.com") && downloadUrl.includes("/upload/")) {
+    downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
   }
 
-  return res.json({ url: data.signedUrl });
+  return res.json({ url: downloadUrl });
 });
 
 export default router;
