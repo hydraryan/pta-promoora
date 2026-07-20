@@ -222,7 +222,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-background pl-12 text-foreground sm:pl-14">
+    <div className="min-h-screen bg-background pt-14 text-foreground sm:pl-14 sm:pt-0">
       <SideNav />
       <Hero />
 
@@ -261,8 +261,8 @@ function SideNav() {
 
   return (
     <>
-      {/* Rail — always visible */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-12 flex-col items-center justify-between border-r border-ink/10 bg-white/80 py-5 backdrop-blur-md sm:w-14">
+      {/* Rail — top bar on mobile, left rail on sm+ */}
+      <aside className="fixed inset-x-0 top-0 z-40 flex h-14 w-full flex-row items-center justify-between border-b border-ink/10 bg-white/80 px-4 backdrop-blur-md sm:bottom-0 sm:left-0 sm:right-auto sm:top-0 sm:h-full sm:w-14 sm:flex-col sm:border-b-0 sm:border-r sm:px-0 sm:py-5">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -272,20 +272,24 @@ function SideNav() {
           <Menu className="h-5 w-5" />
         </button>
 
-        <span className="h-9 w-9" aria-hidden />
+        {/* Mobile branding in the center */}
+        <div className="font-mono text-xs font-semibold tracking-widest text-ink sm:hidden">
+          PTA 2026
+        </div>
 
         <Link
           to="/apply"
           aria-label="Apply"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1a73e8] text-white shadow-sm transition-transform hover:scale-105"
+          className="flex h-8 items-center justify-center rounded-full bg-[#1a73e8] px-3.5 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-105 sm:h-9 sm:w-9 sm:px-0"
         >
-          <ArrowUpRight className="h-4 w-4" />
+          <span className="sm:hidden">Apply</span>
+          <ArrowUpRight className="hidden h-4 w-4 sm:block" />
         </Link>
       </aside>
 
       {/* Persistent vertical brand — stays fixed on top of the drawer, GSoC-style */}
       <div
-        className="pointer-events-none fixed left-0 top-1/2 z-60 flex w-12 -translate-y-1/2 justify-center sm:w-14"
+        className="pointer-events-none fixed left-0 top-1/2 z-60 hidden w-14 -translate-y-1/2 justify-center sm:flex"
         aria-hidden
       >
         <div
@@ -374,7 +378,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   return (
-    <section className="relative flex h-svh min-h-105 w-full flex-col overflow-hidden bg-secondary pt-3 pb-3 sm:pt-5 sm:pb-5 lg:pt-7 lg:pb-7">
+    <section className="relative flex h-[calc(100svh-3.5rem)] w-full flex-col overflow-hidden bg-secondary pb-3 pt-3 sm:h-svh sm:pb-5 sm:pt-5 lg:pb-7 lg:pt-7">
       {/* Perspective dotted floor */}
       <div
         aria-hidden
@@ -431,12 +435,14 @@ function Hero() {
         </div>
 
         {/* Secondary meta strip — pinned to the bottom of the viewport frame */}
-        <div className="grid shrink-0 grid-cols-5 gap-2 border-t border-ink/10 pt-2 text-ink/70 sm:gap-4 sm:pt-4 lg:gap-8 lg:pt-5">
+        <div className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-4 border-t border-ink/10 pb-4 pt-3 text-ink/70 sm:grid-cols-5 sm:gap-4 sm:pb-0 sm:pt-4 lg:gap-8 lg:pt-5">
           <Meta label="Cohort" value="Aug – Oct '26" />
           <Meta label="Duration" value="12 weeks" />
           <Meta label="Format" value="Remote / Hybrid" />
           <Meta label="Tracks" value="13 roles" />
-          <Meta label="Outcome" value="PPO eligible" />
+          <div className="col-span-2 sm:col-span-1">
+            <Meta label="Outcome" value="PPO eligible" />
+          </div>
         </div>
       </div>
     </section>
