@@ -311,7 +311,7 @@ function ApplyPage() {
       try {
         uploadRes = await new Promise<XhrResult>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/auto/upload`;
+          const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/raw/upload`;
           xhr.open("POST", cloudinaryUrl);
           xhr.timeout = 60_000;
           
