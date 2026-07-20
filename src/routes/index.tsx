@@ -262,7 +262,7 @@ function SideNav() {
   return (
     <>
       {/* Rail — top bar on mobile, left rail on sm+ */}
-      <aside className="fixed inset-x-0 top-0 z-40 flex h-14 w-full flex-row items-center justify-between border-b border-ink/10 bg-white/80 px-4 backdrop-blur-md sm:bottom-0 sm:left-0 sm:right-auto sm:top-0 sm:h-full sm:w-14 sm:flex-col sm:border-b-0 sm:border-r sm:px-0 sm:py-5">
+      <aside className="fixed inset-x-0 top-0 z-40 flex h-14 w-full flex-row items-center justify-between border-b border-ink/10 bg-white/80 pl-4 pr-40 backdrop-blur-md sm:bottom-0 sm:left-0 sm:right-auto sm:top-0 sm:h-full sm:w-14 sm:flex-col sm:border-b-0 sm:border-r sm:px-0 sm:py-5">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -408,7 +408,7 @@ function Hero() {
           <img
             src={promooraLogoSrc}
             alt="Promoora Talent Accelerator"
-            className="h-6 w-auto sm:h-9 lg:h-12"
+            className="h-10 w-auto sm:h-12 lg:h-14"
           />
         </div>
 
