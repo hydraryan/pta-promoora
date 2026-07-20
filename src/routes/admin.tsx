@@ -238,19 +238,12 @@ function DetailDrawer({
     setNote("");
   }, [application.id]);
 
-  async function downloadResume() {
+  async function viewResume() {
     try {
       const { url } = await apiFetch<{ url: string }>(`/api/admin/applications/${application.id}/resume`);
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.download = application.resume_original_name || `${application.full_name}-resume.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      window.open(url, "_blank");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Could not download resume");
+      toast.error(err instanceof ApiError ? err.message : "Could not view resume");
     }
   }
 
@@ -315,10 +308,11 @@ function DetailDrawer({
 
           {application.has_resume && (
             <button
-              onClick={downloadResume}
-              className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-neutral-800 ring-1 ring-black/10 hover:bg-neutral-50"
+              onClick={viewResume}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 sm:w-auto"
             >
-              <Download className="h-4 w-4" /> Download resume
+              <ExternalLink className="h-4 w-4" />
+              View Resume
             </button>
           )}
 
