@@ -7,12 +7,14 @@ let isConnected = false;
 
 export default async function handler(req, res) {
   if (!isConnected) {
+    console.log("[vercel api] Attempting database connection...");
     try {
       await connectDB();
       isConnected = true;
+      console.log("[vercel api] Database connection successful!");
     } catch (err) {
-      console.error("[vercel api] DB connection failed:", err);
-      return res.status(500).json({ error: "Database connection failed" });
+      console.error("[vercel api] DB connection failed:", err.message);
+      return res.status(500).json({ error: "Database connection failed: " + err.message });
     }
   }
 
